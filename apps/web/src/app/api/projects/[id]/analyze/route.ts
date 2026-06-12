@@ -10,6 +10,13 @@ export async function POST(
     const { userId } = auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    // Parse optional overrides from frontend
+    let body: any = {}
+    try { body = await request.json() } catch {}
+    const overrideDNA = body.style_dna
+    const variant = body.variant || 'balanced'
+    const musicMood = body.music_mood || 'auto'
+
     await prisma.project.update({
       where: { id: params.id },
       data: { status: 'PROCESSING' },
@@ -28,38 +35,46 @@ export async function POST(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
-    // Step 1: Extract Style DNA from reference reels
-    const referenceUrls = project.referenceReels.map(r => r.url).filter(Boolean) as string[]
-    if (referenceUrls.length > 0) {
-      try {
-        const modalResponse = await fetch(
-          `https://api.modal.com/nexcut-style-dna/extract_style_dna`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${process.env.MODAL_TOKEN_ID}:${process.env.MODAL_TOKEN_SECRET}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              project_id: params.id,
-              reference_urls: referenceUrls,
-              r2_config: {
-                bucket: process.env.R2_BUCKET_NAME,
-                account_id: process.env.R2_ACCOUNT_ID,
+    // Step 1: Extract Style DNA from reference reels (only if no override provided)
+    let styleDNA = overrideDNA
+    if (!styleDNA) {
+      const referenceUrls = project.referenceReels.map(r => r.url).filter(Boolean) as string[]
+      if (referenceUrls.length > 0) {
+        try {
+          const modalResponse = await fetch(
+            `https://api.modal.com/nexcut-style-dna/extract_style_dna`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${process.env.MODAL_TOKEN_ID}:${process.env.MODAL_TOKEN_SECRET}`,
+                'Content-Type': 'application/json',
               },
-            }),
+              body: JSON.stringify({
+                project_id: params.id,
+                reference_urls: referenceUrls,
+                r2_config: {
+                  bucket: process.env.R2_BUCKET_NAME,
+                  account_id: process.env.R2_ACCOUNT_ID,
+                },
+              }),
+            }
+          )
+          if (modalResponse.ok) {
+            const dnaResult = await modalResponse.json()
+            styleDNA = dnaResult.style_dna
           }
-        )
-        if (modalResponse.ok) {
-          const dnaResult = await modalResponse.json()
-          await prisma.project.update({
-            where: { id: params.id },
-            data: { styleDNA: dnaResult.style_dna },
-          })
+        } catch (workerError) {
+          console.error('Style DNA worker call failed:', workerError)
         }
-      } catch (workerError) {
-        console.error('Style DNA worker call failed:', workerError)
       }
+    }
+
+    // Save Style DNA to project
+    if (styleDNA) {
+      await prisma.project.update({
+        where: { id: params.id },
+        data: { styleDNA },
+      })
     }
 
     // Step 2: Auto-detect voice segments from footage

@@ -44,6 +44,11 @@ export async function POST(
     )
 
     try {
+      // Read variant and music_mood from project settings (set during analyze)
+      const projectSettings = (project.styleDNA as any)?.settings || {}
+      const variant = projectSettings.variant || 'balanced'
+      const musicMood = projectSettings.music_mood || 'auto'
+
       const modalResponse = await fetch(
         `https://api.modal.com/nexcut-render/render_reel`,
         {
@@ -64,6 +69,8 @@ export async function POST(
               bucket: process.env.R2_BUCKET_NAME,
               account_id: process.env.R2_ACCOUNT_ID,
             },
+            variant,
+            music_mood: musicMood,
           }),
         }
       )

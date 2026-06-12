@@ -130,22 +130,26 @@ export default function ReferencesPage() {
           </div>
 
           {files.length > 0 && (
-            <div className="space-y-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {files.map((file, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-surface-100 dark:bg-surface-800 rounded-lg">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Film className="h-5 w-5 text-brand-600 flex-shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-surface-900 dark:text-surface-100 truncate">
-                        {file.name}
-                      </p>
-                      <p className="text-xs text-surface-500">
-                        {(file.size / (1024 * 1024)).toFixed(1)} MB
-                      </p>
-                    </div>
+                <div key={i} className="relative group aspect-[9/16] bg-surface-200 dark:bg-surface-800 rounded-lg overflow-hidden">
+                  <video
+                    src={URL.createObjectURL(file)}
+                    className="w-full h-full object-cover"
+                    muted
+                    onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
+                    onMouseLeave={(e) => { (e.target as HTMLVideoElement).pause(); (e.target as HTMLVideoElement).currentTime = 0 }}
+                    loop
+                  />
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                    <p className="text-xs text-white truncate">{file.name}</p>
+                    <p className="text-[10px] text-white/60">{(file.size / (1024 * 1024)).toFixed(1)} MB</p>
                   </div>
-                  <button onClick={() => removeFile(i)} className="text-surface-400 hover:text-red-500 ml-2">
-                    <X className="h-4 w-4" />
+                  <button
+                    onClick={() => removeFile(i)}
+                    className="absolute top-1.5 right-1.5 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                  >
+                    <X className="h-3 w-3" />
                   </button>
                 </div>
               ))}

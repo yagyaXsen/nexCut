@@ -29,9 +29,11 @@ def process_assets(project_id: str, asset_urls: List[str], r2_config: dict) -> d
 
 
 @app.function(image=image, cpu=2, memory=4096, timeout=300)
-def generate_edl(project_id: str, style_dna: dict, asset_info: dict, voice_segments: list) -> dict:
+def generate_edl(project_id: str, style_dna: dict, asset_info: dict,
+                 voice_segments: list, variant: str = "balanced",
+                 music_mood: str = "auto") -> dict:
     """Generate Edit Decision List from Style DNA + processed assets + voice segments."""
     from asset_intel.edl_generator import EDLGenerator
     generator = EDLGenerator(openai_api_key=os.environ["OPENAI_API_KEY"])
-    edl = generator.generate(style_dna, asset_info, voice_segments)
+    edl = generator.generate(style_dna, asset_info, voice_segments, variant, music_mood)
     return {"project_id": project_id, "edl": edl}

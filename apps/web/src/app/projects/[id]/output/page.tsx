@@ -44,13 +44,27 @@ export default function OutputPage() {
       <div className="grid gap-6 sm:grid-cols-3">
         {outputs.map((output) => (
           <Card key={output.id} variant="elevated" padding="none" className="overflow-hidden">
-            <div className="aspect-[9/16] bg-surface-200 dark:bg-surface-800 flex items-center justify-center">
-              <div className="text-center">
-                <Film className="h-10 w-10 text-surface-400 mx-auto mb-2" />
-                <p className="text-sm font-medium text-surface-600 dark:text-surface-400">{output.label}</p>
-                <p className="text-xs text-surface-500">{output.duration}</p>
+            <div className="aspect-[9/16] bg-surface-800 flex items-center justify-center relative group overflow-hidden">
+              <video
+                className="w-full h-full object-cover"
+                src={output.url || undefined}
+                muted
+                loop
+                preload="metadata"
+                onMouseEnter={(e) => (e.target as HTMLVideoElement).play().catch(() => {})}
+                onMouseLeave={(e) => { (e.target as HTMLVideoElement).pause(); (e.target as HTMLVideoElement).currentTime = 0 }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Film className="h-6 w-6 text-white ml-0.5" />
+                </div>
               </div>
-            </div>
+              <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-xs rounded">
+                {output.label}
+              </div>
+              <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 text-white text-xs rounded">
+                {output.duration}
+              </div>
             <CardContent className="p-4 space-y-2">
               <Button
                 fullWidth
