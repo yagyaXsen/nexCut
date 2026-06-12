@@ -1,0 +1,13 @@
+[app]
+name = "nexcut-workers"
+
+[build]
+dockerfile = "Dockerfile.worker"
+
+[[secrets]]
+name = "nexcut-secrets"
+
+[[mounts]]
+condition = "local"
+local_path = "."
+remote_path = "/root/nexcut"

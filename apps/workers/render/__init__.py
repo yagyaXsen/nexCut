@@ -1,0 +1,1 @@
+# Render Worker - Execute FFmpeg rendering based on EDL + Style DNA

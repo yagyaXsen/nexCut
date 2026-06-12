@@ -1,0 +1,1 @@
+# Asset Intelligence Worker - Process user footage, extract metadata, generate EDL

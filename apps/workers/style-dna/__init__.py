@@ -1,0 +1,1 @@
+# Style DNA Worker - Extracts editing style from reference reels
