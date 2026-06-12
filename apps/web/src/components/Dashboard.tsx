@@ -1,14 +1,13 @@
 'use client'
 
-import { useUser, useOrganization } from '@clerk/nextjs'
 import { Button } from '@nexcut/ui/components/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@nexcut/ui/components/Card'
 import Link from 'next/link'
 import { Plus, FolderOpen, Video, Settings, ChevronRight } from 'lucide-react'
+import { useAuth } from '@/lib/auth-context'
 
 export function Dashboard() {
-  const { user, isLoaded } = useUser()
-  const { organization } = useOrganization()
+  const { user, isLoaded, organization } = useAuth()
 
   if (!isLoaded) {
     return (

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import { auth } from '@clerk/nextjs/server'
+import { getServerUserId } from '@/lib/server-auth'
 import { z } from 'zod'
 
 const r2 = new S3Client({
@@ -22,7 +22,7 @@ const presignedSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = auth()
+    const userId = getServerUserId()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

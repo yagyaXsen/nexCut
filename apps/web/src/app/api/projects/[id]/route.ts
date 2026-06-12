@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { getServerUserId } from '@/lib/server-auth'
 import { prisma } from '@nexcut/db'
 
 export async function GET(
@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = auth()
+    const userId = getServerUserId()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const project = await prisma.project.findUnique({
@@ -36,7 +36,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = auth()
+    const userId = getServerUserId()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await request.json()

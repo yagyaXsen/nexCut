@@ -1,13 +1,5 @@
-import { redirect } from 'next/navigation'
-import { auth } from '@clerk/nextjs/server'
-import { Dashboard } from '@/components/Dashboard'
+import { Landing } from '@/components/Landing'
 
 export default async function Home() {
-  const { userId } = auth()
-  
-  if (!userId) {
-    redirect('/sign-in')
-  }
-  
-  return <Dashboard />
+  return <Landing />
 }
