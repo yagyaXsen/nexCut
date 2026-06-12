@@ -196,8 +196,8 @@ export default function FootagePage() {
         <Button variant="outline" onClick={() => router.push(`/projects/${projectId}/references`)}>
           Back to References
         </Button>
-        <Button onClick={() => router.push(`/projects/${projectId}/voice-moments`)} disabled={!allDone} size="lg">
-          Continue to Voice Moments
+        <Button onClick={() => router.push(`/projects/${projectId}/preview`)} disabled={!allDone} size="lg">
+          Generate Reel
         </Button>
       </div>
     </div>

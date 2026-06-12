@@ -3,12 +3,11 @@
 import { useParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { CheckCircle2, Circle, Video, Music, Mic, Eye, Download } from 'lucide-react'
+import { Video, Music, Eye, Download } from 'lucide-react'
 
 const steps = [
   { id: 'references', label: 'References', icon: Video, href: '/references' },
   { id: 'footage', label: 'Footage', icon: Music, href: '/footage' },
-  { id: 'voice-moments', label: 'Voice Moments', icon: Mic, href: '/voice-moments' },
   { id: 'preview', label: 'Preview', icon: Eye, href: '/preview' },
   { id: 'output', label: 'Output', icon: Download, href: '/output' },
 ]

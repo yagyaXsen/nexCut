@@ -79,10 +79,6 @@ export default function OutputPage() {
           <div className="space-y-4">
             <h3 className="font-semibold text-surface-900 dark:text-surface-100">Want to make changes?</h3>
             <div className="flex flex-wrap gap-3">
-              <Button variant="secondary" onClick={() => router.push(`/projects/${projectId}/voice-moments`)}>
-                <RefreshCw className="h-4 w-4" />
-                Adjust Voice Moments
-              </Button>
               <Button variant="secondary" onClick={() => router.push(`/projects/${projectId}/preview`)}>
                 <RefreshCw className="h-4 w-4" />
                 Regenerate
