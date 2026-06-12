@@ -1,0 +1,270 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProjectMode {
+  CREATOR
+  BUSINESS
+}
+
+enum ProjectStatus {
+  DRAFT
+  ANALYZING
+  PROCESSING
+  RENDERING
+  COMPLETED
+  FAILED
+}
+
+enum AssetType {
+  VIDEO
+  IMAGE
+  AUDIO
+  MUSIC
+  BRAND
+}
+
+enum RenderStatus {
+  QUEUED
+  PREVIEW_RENDERING
+  PREVIEW_READY
+  FINAL_RENDERING
+  FINAL_READY
+  FAILED
+}
+
+enum AspectRatio {
+  VERTICAL_9_16
+  SQUARE_1_1
+  PORTRAIT_4_5
+}
+
+enum Platform {
+  INSTAGRAM
+  TIKTOK
+  YOUTUBE
+  LINKEDIN
+}
+
+enum PublishStatus {
+  PENDING
+  SCHEDULED
+  PUBLISHED
+  FAILED
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum Plan {
+  FREE
+  PRO
+  TEAM
+  ENTERPRISE
+}
+
+model User {
+  id            String    @id @default(cuid())
+  clerkId       String    @unique
+  email         String    @unique
+  name          String?
+  avatarUrl     String?
+  workspaces    WorkspaceMember[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([clerkId])
+  @@index([email])
+}
+
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  plan        Plan     @default(FREE)
+  members     WorkspaceMember[]
+  projects    Project[]
+  brandKits   BrandKit[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+}
+
+model WorkspaceMember {
+  id           String   @id @default(cuid())
+  userId       String
+  workspaceId  String
+  role         Role     @default(MEMBER)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+}
+
+model Project {
+  id              String       @id @default(cuid())
+  workspaceId     String
+  name            String
+  mode            ProjectMode  @default(CREATOR)
+  status          ProjectStatus @default(DRAFT)
+  targetDuration  Int?         // seconds
+  aspectRatio     AspectRatio  @default(VERTICAL_9_16)
+
+  workspace       Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  referenceReels  ReferenceReel[]
+  assets          Asset[]
+  voiceSegments   VoiceSegment[]
+  styleDNA        Json?
+  edl             Json?
+  outputReels     OutputReel[]
+  publishJobs     PublishJob[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([workspaceId])
+  @@index([status])
+}
+
+model ReferenceReel {
+  id          String   @id @default(cuid())
+  projectId   String
+  url         String?      // TikTok/IG/YouTube URL
+  fileUrl     String?      // Direct upload R2 URL
+  platform    Platform
+  analysis    Json?        // Full LLM+CV+Audio analysis
+  order       Int          // 0-5 for 4-6 reels
+  status      String       @default("pending") // pending, analyzing, completed, failed
+  error       String?
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([projectId])
+}
+
+model Asset {
+  id            String   @id @default(cuid())
+  projectId     String
+  type          AssetType
+  url           String   // R2
+  thumbnailUrl  String?
+  duration      Float?   // seconds
+  width         Int?
+  height        Int?
+  fps           Float?
+  fileSize      BigInt?
+  mimeType      String?
+
+  // Audio extraction
+  audioUrl      String?  // Extracted WAV
+  transcript    String?  // Whisper full
+  words         Json?    // Word timestamps
+  language      String?
+
+  // Tags
+  aiTags        String[]
+  qualityScore  Float?   // 0-1
+  scenes        Json?    // Scene detection results
+
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  voiceSegments VoiceSegment[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([type])
+}
+
+model VoiceSegment {
+  id         String   @id @default(cuid())
+  projectId  String
+  assetId    String
+  start      Float    // seconds in source asset
+  end        Float
+  transcript String
+  label      String?  // "hook", "story", "cta", "technical", "filler"
+  confidence Float?   // 0-1
+  isPreserved Boolean @default(true) // Whether to preserve exact audio in final
+
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@index([projectId])
+  @@index([assetId])
+}
+
+model OutputReel {
+  id          String       @id @default(cuid())
+  projectId   String
+  version     Int          @default(1)
+  status      RenderStatus @default(QUEUED)
+  url         String?      // Final rendered video
+  previewUrl  String?      // 720p preview
+  duration    Float?
+  aspectRatio AspectRatio  @default(VERTICAL_9_16)
+  settings    Json         // Render settings used
+  error       String?
+  parentId    String?      // For variant tracking
+  parent      OutputReel?  @relation("Variants", fields: [parentId], references: [id])
+  variants    OutputReel[] @relation("Variants")
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model BrandKit {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  name            String
+  logoUrl         String?
+  primaryColor    String   @default("#000000")
+  secondaryColor  String   @default("#FFFFFF")
+  fontUrl         String?
+  fontFamily      String   @default("Inter")
+  introTemplate   String?  // R2 URL
+  outroTemplate   String?  // R2 URL
+  complianceRules Json?    // Disclaimers, restricted words
+  isDefault       Boolean  @default(false)
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([workspaceId])
+}
+
+model PublishJob {
+  id            String        @id @default(cuid())
+  projectId     String
+  outputReelId  String
+  platform      Platform
+  status        PublishStatus @default(PENDING)
+  externalId    String?       // Platform post ID
+  scheduledAt   DateTime?
+  publishedAt   DateTime?
+  error         String?
+  caption       String?
+  hashtags      String[]
+  project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  outputReel    OutputReel    @relation(fields: [outputReelId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([projectId])
+  @@index([outputReelId])
+  @@index([status])
+}

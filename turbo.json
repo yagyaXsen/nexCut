@@ -1,0 +1,38 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "build/**"],
+      "cache": true
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "outputs": [],
+      "cache": true
+    },
+    "typecheck": {
+      "outputs": [],
+      "cache": true
+    },
+    "test": {
+      "outputs": ["coverage/**"],
+      "cache": true
+    },
+    "db:generate": {
+      "outputs": ["node_modules/.prisma/client/**"],
+      "cache": true
+    },
+    "db:push": {
+      "cache": false
+    },
+    "db:studio": {
+      "cache": false,
+      "persistent": true
+    }
+  },
+  "globalEnv": ["DATABASE_URL", "CLERK_SECRET_KEY", "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME", "OPENAI_API_KEY", "MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"]
+}
