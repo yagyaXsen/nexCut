@@ -1,6 +1,7 @@
 'use client'
 
-import { createContext, useContext, ReactNode, useEffect, useState } from 'react'
+import { createContext, useContext, ReactNode } from 'react'
+import { useUser, useOrganization } from '@clerk/nextjs'
 
 interface AuthUser {
   id: string
@@ -42,8 +43,6 @@ export function DevAuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function ClerkAdapter({ children }: { children: ReactNode }) {
-  // Lazy require to avoid module-level Clerk key validation
-  const { useUser, useOrganization } = require('@clerk/nextjs')
   const { user: clerkUser, isLoaded } = useUser()
   const { organization: clerkOrg } = useOrganization()
 
