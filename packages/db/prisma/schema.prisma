@@ -3,73 +3,20 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-enum ProjectMode {
-  CREATOR
-  BUSINESS
-}
-
-enum ProjectStatus {
-  DRAFT
-  ANALYZING
-  PROCESSING
-  RENDERING
-  COMPLETED
-  FAILED
-}
-
-enum AssetType {
-  VIDEO
-  IMAGE
-  AUDIO
-  MUSIC
-  BRAND
-}
-
-enum RenderStatus {
-  QUEUED
-  PREVIEW_RENDERING
-  PREVIEW_READY
-  FINAL_RENDERING
-  FINAL_READY
-  FAILED
-}
-
-enum AspectRatio {
-  VERTICAL_9_16
-  SQUARE_1_1
-  PORTRAIT_4_5
-}
-
-enum Platform {
-  INSTAGRAM
-  TIKTOK
-  YOUTUBE
-  LINKEDIN
-}
-
-enum PublishStatus {
-  PENDING
-  SCHEDULED
-  PUBLISHED
-  FAILED
-}
-
-enum Role {
-  OWNER
-  ADMIN
-  MEMBER
-}
-
-enum Plan {
-  FREE
-  PRO
-  TEAM
-  ENTERPRISE
-}
+// enums replaced with String for SQLite compat
+// ProjectMode: CREATOR | BUSINESS
+// ProjectStatus: DRAFT | ANALYZING | PROCESSING | RENDERING | COMPLETED | FAILED
+// AssetType: VIDEO | IMAGE | AUDIO | MUSIC | BRAND
+// RenderStatus: QUEUED | PREVIEW_RENDERING | PREVIEW_READY | FINAL_RENDERING | FINAL_READY | FAILED
+// AspectRatio: VERTICAL_9_16 | SQUARE_1_1 | PORTRAIT_4_5
+// Platform: INSTAGRAM | TIKTOK | YOUTUBE | LINKEDIN
+// PublishStatus: PENDING | SCHEDULED | PUBLISHED | FAILED
+// Role: OWNER | ADMIN | MEMBER
+// Plan: FREE | PRO | TEAM | ENTERPRISE
 
 model User {
   id            String    @id @default(cuid())
@@ -89,7 +36,7 @@ model Workspace {
   id          String   @id @default(cuid())
   name        String
   slug        String   @unique
-  plan        Plan     @default(FREE)
+  plan        String   @default("FREE")
   members     WorkspaceMember[]
   projects    Project[]
   brandKits   BrandKit[]
@@ -103,7 +50,7 @@ model WorkspaceMember {
   id           String   @id @default(cuid())
   userId       String
   workspaceId  String
-  role         Role     @default(MEMBER)
+  role         String   @default("MEMBER")
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
@@ -116,17 +63,17 @@ model Project {
   id              String       @id @default(cuid())
   workspaceId     String
   name            String
-  mode            ProjectMode  @default(CREATOR)
-  status          ProjectStatus @default(DRAFT)
-  targetDuration  Int?         // seconds
-  aspectRatio     AspectRatio  @default(VERTICAL_9_16)
+  mode            String       @default("CREATOR")
+  status          String       @default("DRAFT")
+  targetDuration  Int?
+  aspectRatio     String       @default("VERTICAL_9_16")
 
   workspace       Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   referenceReels  ReferenceReel[]
   assets          Asset[]
   voiceSegments   VoiceSegment[]
-  styleDNA        Json?
-  edl             Json?
+  styleDNA        String?
+  edl             String?
   outputReels     OutputReel[]
   publishJobs     PublishJob[]
   createdAt       DateTime     @default(now())
@@ -139,16 +86,16 @@ model Project {
 model ReferenceReel {
   id          String   @id @default(cuid())
   projectId   String
-  url         String?      // TikTok/IG/YouTube URL
-  fileUrl     String?      // Direct upload R2 URL
-  platform    Platform
-  analysis    Json?        // Full LLM+CV+Audio analysis
-  order       Int          // 0-5 for 4-6 reels
-  status      String       @default("pending") // pending, analyzing, completed, failed
+  url         String?
+  fileUrl     String?
+  platform    String
+  analysis    String?
+  order       Int
+  status      String   @default("pending")
   error       String?
-  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([projectId])
 }
@@ -156,27 +103,22 @@ model ReferenceReel {
 model Asset {
   id            String   @id @default(cuid())
   projectId     String
-  type          AssetType
-  url           String   // R2
+  type          String
+  url           String
   thumbnailUrl  String?
-  duration      Float?   // seconds
+  duration      Float?
   width         Int?
   height        Int?
   fps           Float?
-  fileSize      BigInt?
+  fileSize      Int?
   mimeType      String?
-
-  // Audio extraction
-  audioUrl      String?  // Extracted WAV
-  transcript    String?  // Whisper full
-  words         Json?    // Word timestamps
+  audioUrl      String?
+  transcript    String?
+  words         String?
   language      String?
-
-  // Tags
-  aiTags        String[]
-  qualityScore  Float?   // 0-1
-  scenes        Json?    // Scene detection results
-
+  aiTags        String   @default("[]")
+  qualityScore  Float?
+  scenes        String?
   project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   voiceSegments VoiceSegment[]
   createdAt     DateTime @default(now())
@@ -190,12 +132,12 @@ model VoiceSegment {
   id         String   @id @default(cuid())
   projectId  String
   assetId    String
-  start      Float    // seconds in source asset
+  start      Float
   end        Float
   transcript String
-  label      String?  // "hook", "story", "cta", "technical", "filler"
-  confidence Float?   // 0-1
-  isPreserved Boolean @default(true) // Whether to preserve exact audio in final
+  label      String?
+  confidence Float?
+  isPreserved Boolean @default(true)
 
   project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
@@ -209,17 +151,18 @@ model OutputReel {
   id          String       @id @default(cuid())
   projectId   String
   version     Int          @default(1)
-  status      RenderStatus @default(QUEUED)
-  url         String?      // Final rendered video
-  previewUrl  String?      // 720p preview
+  status      String       @default("QUEUED")
+  url         String?
+  previewUrl  String?
   duration    Float?
-  aspectRatio AspectRatio  @default(VERTICAL_9_16)
-  settings    Json         // Render settings used
+  aspectRatio String       @default("VERTICAL_9_16")
+  settings    String       @default("{}")
   error       String?
-  parentId    String?      // For variant tracking
+  parentId    String?
   parent      OutputReel?  @relation("Variants", fields: [parentId], references: [id])
   variants    OutputReel[] @relation("Variants")
   project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  publishJobs PublishJob[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -236,9 +179,9 @@ model BrandKit {
   secondaryColor  String   @default("#FFFFFF")
   fontUrl         String?
   fontFamily      String   @default("Inter")
-  introTemplate   String?  // R2 URL
-  outroTemplate   String?  // R2 URL
-  complianceRules Json?    // Disclaimers, restricted words
+  introTemplate   String?
+  outroTemplate   String?
+  complianceRules String?
   isDefault       Boolean  @default(false)
   workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   createdAt       DateTime @default(now())
@@ -248,21 +191,21 @@ model BrandKit {
 }
 
 model PublishJob {
-  id            String        @id @default(cuid())
+  id            String   @id @default(cuid())
   projectId     String
   outputReelId  String
-  platform      Platform
-  status        PublishStatus @default(PENDING)
-  externalId    String?       // Platform post ID
+  platform      String
+  status        String   @default("PENDING")
+  externalId    String?
   scheduledAt   DateTime?
   publishedAt   DateTime?
   error         String?
   caption       String?
-  hashtags      String[]
-  project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  outputReel    OutputReel    @relation(fields: [outputReelId], references: [id], onDelete: Cascade)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  hashtags      String   @default("[]")
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  outputReel    OutputReel @relation(fields: [outputReelId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([projectId])
   @@index([outputReelId])

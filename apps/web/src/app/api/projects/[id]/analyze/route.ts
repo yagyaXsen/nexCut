@@ -73,7 +73,7 @@ export async function POST(
     if (styleDNA) {
       await prisma.project.update({
         where: { id: params.id },
-        data: { styleDNA },
+        data: { styleDNA: JSON.stringify(styleDNA) },
       })
     }
 

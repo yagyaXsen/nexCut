@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerUserId } from '@/lib/server-auth'
 import { prisma } from '@nexcut/db'
 
+function safeParseJSON(val: unknown, fallback: any) {
+  if (!val) return fallback
+  if (typeof val === 'string') {
+    try { return JSON.parse(val) } catch { return fallback }
+  }
+  return val
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -33,11 +41,11 @@ export async function POST(
             projectId: params.id,
             aspectRatio: ratio,
             version: 1,
-            settings: {
-              styleDNA: project.styleDNA,
+            settings: JSON.stringify({
+              styleDNA: safeParseJSON(project.styleDNA, {}),
               aspectRatio: ratio,
               targetDuration: project.targetDuration || 30,
-            },
+            }),
           },
         })
       )
@@ -45,7 +53,8 @@ export async function POST(
 
     try {
       // Read variant and music_mood from project settings (set during analyze)
-      const projectSettings = (project.styleDNA as any)?.settings || {}
+      const styleDNA = safeParseJSON(project.styleDNA, {})
+      const projectSettings = styleDNA.settings || {}
       const variant = projectSettings.variant || 'balanced'
       const musicMood = projectSettings.music_mood || 'auto'
 
@@ -59,8 +68,8 @@ export async function POST(
           },
           body: JSON.stringify({
             project_id: params.id,
-            edl: project.edl || {},
-            style_dna: project.styleDNA || {},
+            edl: safeParseJSON(project.edl, {}),
+            style_dna: safeParseJSON(project.styleDNA, {}),
             asset_urls: project.assets.reduce((acc: Record<string, string>, a) => {
               acc[a.id] = a.url
               return acc

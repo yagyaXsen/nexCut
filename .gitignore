@@ -11,3 +11,5 @@ coverage/
 .DS_Store
 *.log
 Thumbs.db
+*.db
+*.db-journal

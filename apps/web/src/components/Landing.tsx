@@ -38,7 +38,7 @@ export function Landing() {
           </p>
           <div className="flex items-center justify-center gap-4 mt-10">
             <Link
-              href="/sign-up"
+              href="/dashboard"
               className="inline-flex items-center gap-2 px-8 py-4 bg-brand-600 text-white rounded-xl text-lg font-medium hover:bg-brand-700 transition-colors"
             >
               Start Creating
