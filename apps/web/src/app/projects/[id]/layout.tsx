@@ -3,12 +3,13 @@
 import { useParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { Video, Music, Eye, Download } from 'lucide-react'
+import { Video, Music, Eye, Download, Layers } from 'lucide-react'
 
 const steps = [
   { id: 'references', label: 'References', icon: Video, href: '/references' },
   { id: 'footage', label: 'Footage', icon: Music, href: '/footage' },
   { id: 'preview', label: 'Preview', icon: Eye, href: '/preview' },
+  { id: 'versions', label: 'Versions', icon: Layers, href: '/versions' },
   { id: 'output', label: 'Output', icon: Download, href: '/output' },
 ]
 

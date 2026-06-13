@@ -27,37 +27,57 @@ export async function POST(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
-    await prisma.project.update({
-      where: { id: params.id },
-      data: { status: 'RENDERING' },
+    // Read optional custom settings from request body
+    let body: any = {}
+    try { body = await request.json() } catch {}
+    const customVariant = body.variant
+    const customMusicMood = body.music_mood
+    const customDuration = body.targetDuration
+
+    // Compute next version number
+    const existingOutputs = await prisma.outputReel.findMany({
+      where: { projectId: params.id },
+      select: { version: true },
+      distinct: ['version'],
     })
+    const nextVersion = existingOutputs.length > 0
+      ? Math.max(...existingOutputs.map(o => o.version)) + 1
+      : 1
 
     const aspectRatios = ['VERTICAL_9_16', 'SQUARE_1_1', 'PORTRAIT_4_5'] as const
 
+    // Use custom settings or fall back to project defaults
+    const baseStyle = safeParseJSON(project.styleDNA, {})
+    const baseSettings = baseStyle.settings || {}
+    const variant = customVariant || baseSettings.variant || 'balanced'
+    const musicMood = customMusicMood || baseSettings.music_mood || 'auto'
+    const targetDuration = customDuration || project.targetDuration || 30
+
     const outputs = await Promise.all(
-      aspectRatios.map((ratio, index) =>
+      aspectRatios.map((ratio) =>
         prisma.outputReel.create({
           data: {
             projectId: params.id,
             aspectRatio: ratio,
-            version: 1,
+            version: nextVersion,
             settings: JSON.stringify({
-              styleDNA: safeParseJSON(project.styleDNA, {}),
+              styleDNA: baseStyle,
               aspectRatio: ratio,
-              targetDuration: project.targetDuration || 30,
+              targetDuration,
+              variant,
+              music_mood: musicMood,
             }),
           },
         })
       )
     )
 
-    try {
-      // Read variant and music_mood from project settings (set during analyze)
-      const styleDNA = safeParseJSON(project.styleDNA, {})
-      const projectSettings = styleDNA.settings || {}
-      const variant = projectSettings.variant || 'balanced'
-      const musicMood = projectSettings.music_mood || 'auto'
+    await prisma.project.update({
+      where: { id: params.id },
+      data: { status: 'RENDERING' },
+    })
 
+    try {
       const modalResponse = await fetch(
         `https://api.modal.com/nexcut-render/render_reel`,
         {
@@ -98,11 +118,13 @@ export async function POST(
       }
     } catch (workerError) {
       console.error('Render worker error:', workerError)
-      // Mark first output as ready even if worker fails (for demo/testing)
-      await prisma.outputReel.update({
-        where: { id: outputs[0].id },
-        data: { status: 'PREVIEW_READY' },
-      })
+      // Mark all outputs as preview ready even if worker fails (for demo/testing)
+      for (const out of outputs) {
+        await prisma.outputReel.update({
+          where: { id: out.id },
+          data: { status: 'PREVIEW_READY' },
+        })
+      }
     }
 
     await prisma.project.update({

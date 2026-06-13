@@ -1,27 +1,53 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@nexcut/ui/components/Button'
 import { Card, CardContent } from '@nexcut/ui/components/Card'
-import { Download, Share2, Film, RefreshCw, Award } from 'lucide-react'
+import { Download, Share2, Film, RefreshCw, Award, Layers } from 'lucide-react'
+
+interface OutputReel {
+  id: string
+  aspectRatio: string
+  url: string | null
+  duration: number | null
+  status: string
+}
+
+const aspectLabels: Record<string, string> = {
+  VERTICAL_9_16: '9:16 Vertical',
+  SQUARE_1_1: '1:1 Square',
+  PORTRAIT_4_5: '4:5 Portrait',
+}
 
 export default function OutputPage() {
   const params = useParams()
   const router = useRouter()
   const projectId = params.id as string
-  const [copied, setCopied] = useState(false)
+  const [outputs, setOutputs] = useState<OutputReel[]>([])
+  const [loading, setLoading] = useState(true)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  const outputs = [
-    { id: 'v1', label: '9:16 Vertical', url: '#', duration: '30s', status: 'ready' },
-    { id: 'v2', label: '1:1 Square', url: '#', duration: '30s', status: 'ready' },
-    { id: 'v3', label: '4:5 Portrait', url: '#', duration: '30s', status: 'ready' },
-  ]
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch(`/api/projects/${projectId}/outputs`)
+        if (res.ok) {
+          const data = await res.json()
+          const latest = data.versions?.[0]?.reels || []
+          setOutputs(latest)
+        }
+      } catch {} finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [projectId])
 
-  function handleCopyLink(url: string) {
+  function handleCopyLink(url: string, id: string) {
     navigator.clipboard.writeText(url)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
   }
 
   function handleDownload(url: string, label: string) {
@@ -29,6 +55,14 @@ export default function OutputPage() {
     a.href = url
     a.download = `nexcut-reel-${label.replace(/\s+/g, '-').toLowerCase()}.mp4`
     a.click()
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
   }
 
   return (
@@ -60,29 +94,42 @@ export default function OutputPage() {
                 </div>
               </div>
               <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-xs rounded">
-                {output.label}
+                {aspectLabels[output.aspectRatio] || output.aspectRatio}
               </div>
-              <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 text-white text-xs rounded">
-                {output.duration}
-              </div>
+              {output.duration && (
+                <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 text-white text-xs rounded">
+                  {Math.round(output.duration)}s
+                </div>
+              )}
+            </div>
             <CardContent className="p-4 space-y-2">
-              <Button
-                fullWidth
-                size="sm"
-                onClick={() => handleDownload(output.url, output.label)}
-              >
-                <Download className="h-4 w-4" />
-                Download
-              </Button>
-              <Button
-                variant="outline"
-                fullWidth
-                size="sm"
-                onClick={() => handleCopyLink(output.url)}
-              >
-                <Share2 className="h-4 w-4" />
-                {copied ? 'Copied!' : 'Copy Link'}
-              </Button>
+              {output.status === 'FINAL_READY' || output.status === 'PREVIEW_READY' ? (
+                <>
+                  <Button
+                    fullWidth
+                    size="sm"
+                    onClick={() => output.url && handleDownload(output.url, aspectLabels[output.aspectRatio] || output.aspectRatio)}
+                    disabled={!output.url}
+                  >
+                    <Download className="h-4 w-4" />
+                    Download
+                  </Button>
+                  <Button
+                    variant="outline"
+                    fullWidth
+                    size="sm"
+                    onClick={() => output.url && handleCopyLink(output.url, output.id)}
+                    disabled={!output.url}
+                  >
+                    <Share2 className="h-4 w-4" />
+                    {copiedId === output.id ? 'Copied!' : 'Copy Link'}
+                  </Button>
+                </>
+              ) : (
+                <Button fullWidth size="sm" disabled>
+                  Processing...
+                </Button>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -93,9 +140,9 @@ export default function OutputPage() {
           <div className="space-y-4">
             <h3 className="font-semibold text-surface-900 dark:text-surface-100">Want to make changes?</h3>
             <div className="flex flex-wrap gap-3">
-              <Button variant="secondary" onClick={() => router.push(`/projects/${projectId}/preview`)}>
-                <RefreshCw className="h-4 w-4" />
-                Regenerate
+              <Button variant="secondary" onClick={() => router.push(`/projects/${projectId}/versions`)}>
+                <Layers className="h-4 w-4" />
+                All Versions
               </Button>
               <Button variant="outline" onClick={() => router.push('/projects/new')}>
                 Create New Project
